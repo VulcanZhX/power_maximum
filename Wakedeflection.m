@@ -56,12 +56,12 @@ classdef Wakedeflection < handle
             for i = 1:length(x_d)
                 dx_val = x_d(i);
                 if dx_val > 0
-                    delta_x_steps = 0:1:(dx_val - 1);  % 步长为10
+                    delta_x_steps = 0:5:(dx_val - 1);  % 步长为10
                     if ~isempty(delta_x_steps)
                         d_w_steps = 1 + 0.0834 * log(1 + exp((delta_x_steps - rotor_D) / rotor_D * 2));
                         integrand = -turbine.Ct * cosd(turbine.yaw_angle)^2 * sind(turbine.yaw_angle) ./ (8 * d_w_steps.^2) ...
                                     .* (1 + erf(sqrt(2) * delta_x_steps / rotor_D));
-                        y_c(i) = sum(integrand) * 2;  % 矩形法积分，步长10 * 2 = 20
+                        y_c(i) = sum(integrand) * 10;  % 矩形法积分，步长10 * 2 = 20
                     end
                 else
                     y_c(i) = 0;
