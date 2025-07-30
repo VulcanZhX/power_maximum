@@ -97,13 +97,13 @@ toc
 % % 或者：parpool('threads');
 
 end_time=tic;
-% 
-% qingzhou12_agc = 0.99*swi.get_farm_qingzhou12_power();
-% qingzhou3_agc = 0.99*swi.get_farm_qingzhou3_power();
-% 
-% tic
-% swi.yaw_optimization_tracking_ipopt(qingzhou12_agc, qingzhou3_agc);
-% toc
+
+qingzhou12_agc = 0.99*swi.get_farm_qingzhou12_power();
+qingzhou3_agc = 0.99*swi.get_farm_qingzhou3_power();
+
+tic
+swi.yaw_optimization_tracking_life_ipopt(qingzhou12_agc, qingzhou3_agc);
+toc
 % 
 % end_time_tracking = tic;
 % indexes=1:1:159;
