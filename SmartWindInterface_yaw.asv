@@ -308,26 +308,26 @@ classdef SmartWindInterface_yaw <handle
             total_power_qingzhou3=sum(power_cell);
         end
 
-        %% 存储各风机的寿命系数
-        function life_cell=get_turbines_life_coeff(obj)
+        %% 存储各风机的寿命
+        function life_cell=get_turbines_life(obj)
             life_cell=zeros(length(obj.layout_x),1);
             for i=1:length(obj.layout_x)
                 life_cell(i)=obj.windfield.turbinechart.turbines...
-                    {i,1}.comprehensive_fatigue_coefficient;
+                    {i,1}.left_life;
             end
         end
-        
+
         %GET_FARM_POWER is a function that outputs the total power produced
         %by the wind farm, obtained by summing all the individual powers
         %produced by each turbine. It has to be called after the wake
         %calculation or yaw optimization.
 
-        %% 存储整个风场的平均寿命系数
-        function total_life=get_farm_life_coeff(obj)
+        %% 存储整个风场的平均寿命
+        function total_life=get_farm_life(obj)
             life_cell=zeros(length(obj.layout_x),1);
             for i=1:length(obj.layout_x)
                 life_cell(i)=obj.windfield.turbinechart.turbines...
-                    {i,1}.comprehensive_fatigue_coefficient;
+                    {i,1}.life;
             end
             total_life=sum(life_cell)/length(obj.layout_x);
         end
@@ -650,15 +650,11 @@ classdef SmartWindInterface_yaw <handle
             options.lb = repelem(minimum_yaw, n_turbs)';
             options.ub = repelem(maximum_yaw, n_turbs)';
             % IPOPT 选项
-            options.ipopt.acceptable_obj_change_tol = 1e4;
             options.ipopt.print_level = 5;
             options.ipopt.tol = 1e-2; % 近似 fmincon 的 OptimalityTolerance
-            options.ipopt.max_iter = 4; % 近似 fmincon 的 MaxIterations
+            options.ipopt.max_iter = 2; % 近似 fmincon 的 MaxIterations
             options.ipopt.hessian_approximation = 'limited-memory';
-            options.ipopt.limited_memory_max_history = 4;
-            options.ipopt.accept_after_max_steps = 2;
-            options.max_wall_time = 32;
-            options.ipopt.limited_memory_max_skipping = 3;
+
             % 定义 IPOPT 回调函数
             funcs.objective = @(x) obj.cost_function(x, indexes);
             funcs.gradient = @(x) obj.cost_function_grad(u_wake_original,x,wake_aff_mat,indexes);
@@ -694,9 +690,8 @@ classdef SmartWindInterface_yaw <handle
             options.ub = repelem(maximum_yaw, n_turbs)';
             % IPOPT 选项
             options.ipopt.print_level = 5;
-            options.imaxcpusec = 32;
             options.ipopt.tol = 1e-3; % 近似 fmincon 的 OptimalityTolerance
-            options.ipopt.max_iter = 2; % 近似 fmincon 的 MaxIterations
+            options.ipopt.max_iter = 4; % 近似 fmincon 的 MaxIterations
             options.ipopt.hessian_approximation = 'limited-memory';
 
             % 定义 IPOPT 回调函数
@@ -739,7 +734,7 @@ classdef SmartWindInterface_yaw <handle
                 'ConstraintTolerance',1e-6, ...
                 'StepTolerance',1e-3, ...
                 'Display','iter', ...
-                'MaxIterations', 4);
+                'MaxIterations', 2);
             %x0=
             x0=rand(1,n_turbs);%12个n_turbs
 
@@ -1107,31 +1102,6 @@ classdef SmartWindInterface_yaw <handle
             end
         end
 
-        % function H = approx_hessian_fd(gradfun, x, epsilon)
-        %     % 近似计算 Hessian 矩阵
-        %     % gradfun: 计算梯度的函数句柄，输入 x，输出梯度向量
-        %     % x: 计算点（列向量）
-        %     % epsilon: 差分步长，默认 1e-6
-        % 
-        %     if nargin < 3
-        %         epsilon = 1e-3;
-        %     end
-        % 
-        %     n = length(x);
-        %     g0 = gradfun(x);
-        %     H = zeros(n, n);
-        % 
-        %     parfor i = 1:n
-        %         x_eps = x;
-        %         x_eps(i) = x_eps(i) + epsilon;
-        %         g1 = gradfun(x_eps);
-        %         H(:, i) = (g1 - g0) / epsilon;
-        %     end
-        % 
-        %     % 保证 Hessian 对称
-        %     H = (H + H') / 2;
-        % end
-
         function rel_power = cost_track_function(obj, yaw_angles, aff_turbines, qingzhou12_agc, qingzhou3_agc)
             vector = zeros(numel(obj.layout_x),1);
             vector(aff_turbines) = yaw_angles(:);
@@ -1184,10 +1154,8 @@ classdef SmartWindInterface_yaw <handle
             obj.calculate_wake();
         end
 
-        function life_coefficient = cost_loss_function(obj,yaw_angles,aff_turbines)
-            vector = zeros(numel(obj.layout_x),1);
-            vector(aff_turbines) = yaw_angles(:);
-            obj.set_yaw_angles(vector);
+        function life_coeffici = cost_loss_function(obj,yaw_angles,aff_turbines)
+            obj.set_yaw_angles(yaw_angles);
             obj.calculate_wake();
             life_coefficient = obj.get_farm_loss(); % minimize life loss sum
             % penalty factor by power tracking
