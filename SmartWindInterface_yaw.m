@@ -1188,28 +1188,7 @@ classdef SmartWindInterface_yaw < handle
             obj.windfield.turbinechart.turbines{gamma_index}.yaw_angle = gamma_org;
         end
 
-        %% Cost function with gradient
-        function [power, p_grad] = cost_function_withgrad_block_parallel( ...
-                obj, u_wake_original, yaw_angles, wake_aff_mat, aff_turbines)
-
-            vector = zeros(numel(obj.layout_x), 1);
-            vector(aff_turbines) = yaw_angles(:);
-            obj.set_yaw_angles(vector);
-
-            obj.calculate_wake();
-            power = -obj.get_farm_power();
-
-            n = numel(aff_turbines);
-            p_grad = zeros(n, 1); % <== 必须
-
-            % 可选: gammaIdxLocal = aff_turbines;  (若担心切片失败)
-            parfor t = 1:n
-                gamma_idx = aff_turbines(t); % 只读
-                val = obj.compute_elemgrad(u_wake_original, wake_aff_mat, gamma_idx);
-                p_grad(t) = val; % val 必须是标量
-            end
-
-        end
+        
 
         %% 只计算梯度
         function p_grad = cost_function_grad(obj, u_wake_original, yaw_angles, ...
@@ -1286,6 +1265,29 @@ classdef SmartWindInterface_yaw < handle
             obj.calculate_wake();
         end
 
+        %% Cost function with gradient
+        function [power, p_grad] = cost_function_withgrad_block_parallel( ...
+                obj, u_wake_original, yaw_angles, wake_aff_mat, aff_turbines)
+
+            vector = zeros(numel(obj.layout_x), 1);
+            vector(aff_turbines) = yaw_angles(:);
+            obj.set_yaw_angles(vector);
+
+            obj.calculate_wake();
+            power = -obj.get_farm_power();
+
+            n = numel(aff_turbines);
+            p_grad = zeros(n, 1); % <== 必须
+
+            % 可选: gammaIdxLocal = aff_turbines;  (若担心切片失败)
+            parfor t = 1:n
+                gamma_idx = aff_turbines(t); % 只读
+                val = obj.compute_elemgrad(u_wake_original, wake_aff_mat, gamma_idx);
+                p_grad(t) = val; % val 必须是标量
+            end
+
+        end
+
         function [rel_power, p_rel_grad] = cost_track_function_withgrad_block_parallel( ...
                 obj, u_wake_original, yaw_angles, wake_aff_mat, aff_turbines, ...
                 qingzhou12_agc, qingzhou3_agc)
@@ -1308,29 +1310,5 @@ classdef SmartWindInterface_yaw < handle
 
             obj.calculate_wake();
         end
-
-        function life_coefficient = cost_loss_function(obj, yaw_angles, aff_turbines)
-            vector = zeros(numel(obj.layout_x), 1);
-            vector(aff_turbines) = yaw_angles(:);
-            obj.set_yaw_angles(vector);
-            obj.calculate_wake();
-            life_coefficient = obj.get_farm_life_coeff(); % minimize life loss sum
-            % penalty factor by power tracking
-            % power_12 = power_limit_12, power_3 = power_limit_3
-            penalty_limit = 1e5; % penalty factor
-            scale_factor = 0.013;
-            power_12 = obj.get_farm_qingzhou12_power();
-            power_3 = obj.get_farm_qingzhou3_power();
-            penalty_12 = norm((max(abs(power_12 - power_limit_12), penalty_limit))) ^ 2;
-            penalty_3 = norm((max(abs(power_3 - power_limit_3), penalty_limit))) ^ 2;
-
-            % average penalty
-            penalty_std = std(obj.get_turbines_life_coeff());
-            scale_factor_std = 1;
-            life_coefficient = life_coefficient + scale_factor * (penalty_12 + penalty_3) + ...
-                scale_factor_std * penalty_std; % add penalty factor to life coefficient
-        end
-
     end
-
 end

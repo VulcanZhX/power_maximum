@@ -36,3 +36,10 @@ repair_c_vector=[cell2mat(readcell('inputs_all_fields.xlsx','Sheet','Turbine','R
                 cell2mat(readcell('inputs_all_fields.xlsx','Sheet','Turbine','Range','E16:E16')),...
                 cell2mat(readcell('inputs_all_fields.xlsx','Sheet','Turbine','Range','H16:H16'))];
 sqz_12=sqz_1+sqz_2;
+
+%% 运行测试
+for wd = wind_direction
+    for vel = vel_sets
+        
+    end
+end
