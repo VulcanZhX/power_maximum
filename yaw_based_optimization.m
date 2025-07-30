@@ -74,7 +74,7 @@ optimized_resulut=struct();
 % for i=1:length(windfarmcluster_wind_direction_N_NE)
 %     for j=1:length(windfarmcluster_wind_speed_N_NE)
 %% 初始化场群
-swi=SmartWindInterface_yaw(sqz_12,turbine_diameter_vector,turbine_hub_height_vector,rated_power_vector,life_total_vector,repair_c_vector,matrix,100,3.5);
+swi=SmartWindInterface_yaw(sqz_12,turbine_diameter_vector,turbine_hub_height_vector,rated_power_vector,life_total_vector,repair_c_vector,matrix,328,9.55);
 rng("default")
 % swi.windfield.wind_direction=270;
 swi.windfield.wake.velocity_model='Huadian';

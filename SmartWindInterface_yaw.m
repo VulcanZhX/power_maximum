@@ -688,12 +688,10 @@ classdef SmartWindInterface_yaw < handle
             options.ipopt.acceptable_obj_change_tol = 1e4;
             options.ipopt.print_level = 5;
             options.ipopt.tol = 1e-2; % 近似 fmincon 的 OptimalityTolerance
-            options.ipopt.max_iter = 4; % 近似 fmincon 的 MaxIterations
+            options.ipopt.max_iter = 2; % 近似 fmincon 的 MaxIterations
             options.ipopt.hessian_approximation = 'limited-memory';
             options.ipopt.limited_memory_max_history = 4;
-            options.ipopt.accept_after_max_steps = 2;
-            options.max_wall_time = 32;
-            options.ipopt.limited_memory_max_skipping = 3;
+            options.ipopt.limited_memory_max_skipping = 2;
             % 定义 IPOPT 回调函数
             funcs.objective = @(x) obj.cost_function(x, indexes);
             funcs.gradient = @(x) obj.cost_function_grad(u_wake_original, x, wake_aff_mat, indexes);
