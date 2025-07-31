@@ -686,7 +686,7 @@ classdef SmartWindInterface_yaw < handle
             options.ub = repelem(maximum_yaw, n_turbs)';
             % IPOPT 选项
             options.ipopt.acceptable_obj_change_tol = 1e4;
-            options.ipopt.print_level = 5;
+            options.ipopt.print_level = 0;
             options.ipopt.tol = 1e-2; % 近似 fmincon 的 OptimalityTolerance
             options.ipopt.max_iter = 2; % 近似 fmincon 的 MaxIterations
             options.ipopt.hessian_approximation = 'limited-memory';
@@ -699,7 +699,7 @@ classdef SmartWindInterface_yaw < handle
             % funcs.jacobian = [];
             % funcs.jacobianstructure = [];
 
-            [opt_yaw_angles_partial, info] = ipopt(x0, funcs, options);
+            [opt_yaw_angles_partial, ~] = ipopt(x0, funcs, options);
             opt_yaw_angles = zeros(length(obj.layout_x), 1);
 
             for i = 1:length(indexes)
@@ -728,7 +728,7 @@ classdef SmartWindInterface_yaw < handle
             options.lb = repelem(minimum_yaw, n_turbs)';
             options.ub = repelem(maximum_yaw, n_turbs)';
             % IPOPT 选项
-            options.ipopt.print_level = 5;
+            options.ipopt.print_level = 0;
             options.imaxcpusec = 32;
             options.ipopt.tol = 1e-3; % 近似 fmincon 的 OptimalityTolerance
             options.ipopt.max_iter = 2; % 近似 fmincon 的 MaxIterations
@@ -1111,9 +1111,11 @@ classdef SmartWindInterface_yaw < handle
         end
 
         %% tracking and life optimization
-        function objective = cost_tracking_life(obj, yaw_angles, aff_turbines, qingzhou12_agc, qingzhou3_agc)
+        function objective = cost_tracking_life(obj, yaw_angles, aff_turbines, qingzhou12_agc, qingzhou3_agc, theta)
+            if nargin < 6
+                theta = 0.75; % 默认值
+            end
             vector = zeros(length(obj.layout_x));
-
             for i = 1:length(aff_turbines)
                 vector(aff_turbines(i)) = yaw_angles(i);
             end
@@ -1123,14 +1125,16 @@ classdef SmartWindInterface_yaw < handle
             rel_power = 0.5 * (rel_power_true) ^ 2;
 
             life_coefficient = obj.get_farm_life_coeff() * 5e8; % minimize life loss sum
-            theta = 0.8;
             objective = theta * rel_power + (1 - theta) * life_coefficient;
         end
 
         %% gradient of composed cost-life-track function
         function p_rel_grad = cost_tracking_life_function_grad(obj, ...
                 u_wake_original, yaw_angles, wake_aff_mat, aff_turbines, ...
-                qingzhou12_agc, qingzhou3_agc)
+                qingzhou12_agc, qingzhou3_agc, theta)
+            if nargin < 8
+                theta = 0.75; % 默认值
+            end
             vector = zeros(numel(obj.layout_x), 1);
             vector(aff_turbines) = yaw_angles(:);
             obj.set_yaw_angles(vector);
@@ -1142,8 +1146,8 @@ classdef SmartWindInterface_yaw < handle
             % 可选: gammaIdxLocal = aff_turbines;  (若担心切片失败)
             parfor t = 1:n
                 gamma_idx = aff_turbines(t); % 只读
-                val = obj.compute_elemgrad(u_wake_original, wake_aff_mat, gamma_idx) * rel_power_true...
-                        + obj.compute_elemgrad_life(u_wake_original, wake_aff_mat, gamma_idx);
+                val = theta*obj.compute_elemgrad(u_wake_original, wake_aff_mat, gamma_idx) * rel_power_true...
+                        + (1-theta)*obj.compute_elemgrad_life(u_wake_original, wake_aff_mat, gamma_idx);
                 p_rel_grad(t) = val; % val 必须是标量
             end
 
@@ -1267,26 +1271,26 @@ classdef SmartWindInterface_yaw < handle
 
         %% Cost function with gradient
         function [power, p_grad] = cost_function_withgrad_block_parallel( ...
-                obj, u_wake_original, yaw_angles, wake_aff_mat, aff_turbines)
+            obj, u_wake_original, yaw_angles, wake_aff_mat, aff_turbines)
 
-            vector = zeros(numel(obj.layout_x), 1);
-            vector(aff_turbines) = yaw_angles(:);
-            obj.set_yaw_angles(vector);
+        vector = zeros(numel(obj.layout_x), 1);
+        vector(aff_turbines) = yaw_angles(:);
+        obj.set_yaw_angles(vector);
 
-            obj.calculate_wake();
-            power = -obj.get_farm_power();
+        obj.calculate_wake();
+        power = -obj.get_farm_power();
 
-            n = numel(aff_turbines);
-            p_grad = zeros(n, 1); % <== 必须
+        n = numel(aff_turbines);
+        p_grad = zeros(n, 1); % <== 必须
 
-            % 可选: gammaIdxLocal = aff_turbines;  (若担心切片失败)
-            parfor t = 1:n
-                gamma_idx = aff_turbines(t); % 只读
-                val = obj.compute_elemgrad(u_wake_original, wake_aff_mat, gamma_idx);
-                p_grad(t) = val; % val 必须是标量
-            end
-
+        % 可选: gammaIdxLocal = aff_turbines;  (若担心切片失败)
+        parfor t = 1:n
+            gamma_idx = aff_turbines(t); % 只读
+            val = obj.compute_elemgrad(u_wake_original, wake_aff_mat, gamma_idx);
+            p_grad(t) = val; % val 必须是标量
         end
+
+    end
 
         function [rel_power, p_rel_grad] = cost_track_function_withgrad_block_parallel( ...
                 obj, u_wake_original, yaw_angles, wake_aff_mat, aff_turbines, ...
