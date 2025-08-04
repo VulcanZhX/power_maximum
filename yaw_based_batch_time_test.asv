@@ -5,37 +5,7 @@ close all
 rng("default");
 
 %% load data from wd_vel.mat
-wd_vel = load("TestData/wd_vel.mat");
-wind_direction = wd_vel.wind_direction;
-vel_sets = wd_vel.vel_sets;
-
-qingzhou12_agc_perc = [0.5 1]; % 50%与100%基准功率
-qingzhou3_agc_perc = [0.5 1];
-
-%% 初始化偏航设置
-matrix=zeros(1,159);
-
-
-%% 不同类型机组的设置
-sqz_1=cell2mat(readcell('inputs_all_fields.xlsx','Sheet','WindField','Range','B10:B10'));              %青州1风机个数
-sqz_2=cell2mat(readcell('inputs_all_fields.xlsx','Sheet','WindField','Range','B11:B11'));              %青州2风机个数
-sqz_3=cell2mat(readcell('inputs_all_fields.xlsx','Sheet','WindField','Range','B12:B12'));              %青州3风机个数
-turbine_diameter_vector=[cell2mat(readcell('inputs_all_fields.xlsx','Sheet','Turbine','Range','B3:B3')),...
-                cell2mat(readcell('inputs_all_fields.xlsx','Sheet','Turbine','Range','E3:E3')),...
-                cell2mat(readcell('inputs_all_fields.xlsx','Sheet','Turbine','Range','H3:H3'))];
-turbine_hub_height_vector=[cell2mat(readcell('inputs_all_fields.xlsx','Sheet','Turbine','Range','B4:B4')),...
-                cell2mat(readcell('inputs_all_fields.xlsx','Sheet','Turbine','Range','E4:E4')),...
-                cell2mat(readcell('inputs_all_fields.xlsx','Sheet','Turbine','Range','H4:H4'))];
-rated_power_vector=[cell2mat(readcell('inputs_all_fields.xlsx','Sheet','Turbine','Range','B13:B13')),...
-                cell2mat(readcell('inputs_all_fields.xlsx','Sheet','Turbine','Range','E13:E13')),...
-                cell2mat(readcell('inputs_all_fields.xlsx','Sheet','Turbine','Range','H13:H13'))];
-life_total_vector=[cell2mat(readcell('inputs_all_fields.xlsx','Sheet','Turbine','Range','B15:B15')),...
-                cell2mat(readcell('inputs_all_fields.xlsx','Sheet','Turbine','Range','E15:E15')),...
-                cell2mat(readcell('inputs_all_fields.xlsx','Sheet','Turbine','Range','H15:H15'))];
-repair_c_vector=[cell2mat(readcell('inputs_all_fields.xlsx','Sheet','Turbine','Range','B16:B16')),...
-                cell2mat(readcell('inputs_all_fields.xlsx','Sheet','Turbine','Range','E16:E16')),...
-                cell2mat(readcell('inputs_all_fields.xlsx','Sheet','Turbine','Range','H16:H16'))];
-sqz_12=sqz_1+sqz_2;
+load('Input\input_data.mat');
 
 %% 测试数据记录
 objectives = zeros(length(wind_direction) * length(vel_sets), 4); % wind_direction, vel_sets, power_agc(4 types)
@@ -51,83 +21,78 @@ else
 end
 % for wd = 1:length(wind_direction)
 %     for vel = 1:length(vel_sets)
-for wd = 1:length(wind_direction)
-    for vel = 1:length(vel_sets)
-        swi = SmartWindInterface_yaw(sqz_12, turbine_diameter_vector, turbine_hub_height_vector, rated_power_vector,...
-         life_total_vector, repair_c_vector, matrix, wind_direction(wd), vel_sets(vel));
-        swi.windfield.wake.velocity_model = 'Huadian';
-        swi.windfield.wake.deflection_model = 'Huadian';
-        swi.windfield.wake.turbulence_model = 'Huadian';
-        swi.windfield.enable_wfr = 'No';
-        try
-            swi.calculate_wake();
-            power_baseline = swi.get_farm_power();
-            qingzhou12_baseline = swi.get_farm_qingzhou12_power();
-            qingzhou3_baseline = swi.get_farm_qingzhou3_power();
-            qingzhou12_agc = qingzhou12_baseline .* qingzhou12_agc_perc; % 50%与100%基准功率
-            qingzhou3_agc = qingzhou3_baseline .* qingzhou3_agc_perc;
-            tic
-            % 打印输入：风向，风速，青州12与青州3的AGC功率百分比
-            fprintf('本次执行结果为：风向: %.0f, 风速: %.1f, 青州12风场AGC: %.2f%%, 青州3风场AGC: %.2f%%\n', ...
-                    wind_direction(wd), vel_sets(vel), 100*qingzhou12_agc_perc(1), 100*qingzhou3_agc_perc(1));
-            swi.yaw_optimization_tracking_life_ipopt(qingzhou12_agc(1), qingzhou3_agc(1));
-            times((wd - 1) * length(vel_sets) + vel, 1) = toc;
-            objectives((wd - 1) * length(vel_sets) + vel, 1) = swi.get_farm_power();
-            % 打印运行时间
-            fprintf('本次执行周期为: %.2fs\n', times((wd - 1) * length(vel_sets) + vel, 1));
-            % 判定是否小于29s
-            if times((wd - 1) * length(vel_sets) + vel, 1) <= 29
-                fprintf('本次测试周期时间小于29秒\n');
-            end
-            % disp('test 1 passed');
-            % pause(1.5)
-            % clc
-
-            tic
-            fprintf('本次执行结果为：风向: %.0f, 风速: %.1f, 青州12风场AGC: %.2f%%, 青州3风场AGC: %.2f%%\n', ...
-                    wind_direction(wd), vel_sets(vel), 100*qingzhou12_agc_perc(1), 100*qingzhou3_agc_perc(2));
-            swi.yaw_optimization_tracking_life_ipopt(qingzhou12_agc(1), qingzhou3_agc(2));
-            times((wd - 1) * length(vel_sets) + vel, 2) = toc;
-            objectives((wd - 1) * length(vel_sets) + vel, 2) = swi.get_farm_power();
-            fprintf('本次执行周期为: %.2fs\n', times((wd - 1) * length(vel_sets) + vel, 2));
-            if times((wd - 1) * length(vel_sets) + vel, 2) <= 29
-                fprintf('本次测试周期时间小于29秒\n');
-            end
-            % disp('test 2 passed');
-            % pause(1.5)
-            % clc
-
-            tic
-            fprintf('本次执行结果为：风向: %.0f, 风速: %.1f, 青州12风场AGC: %.2f%%, 青州3风场AGC: %.2f%%\n', ...
-                    wind_direction(wd), vel_sets(vel), 100*qingzhou12_agc_perc(2), 100*qingzhou3_agc_perc(1));
-            swi.yaw_optimization_tracking_life_ipopt(qingzhou12_agc(2), qingzhou3_agc(1));
-            times((wd - 1) * length(vel_sets) + vel, 3) = toc;
-            objectives((wd - 1) * length(vel_sets) + vel, 3) = swi.get_farm_power();
-            fprintf('本次执行周期为: %.2fs\n', times((wd - 1) * length(vel_sets) + vel, 3));
-            if times((wd - 1) * length(vel_sets) + vel, 3) <= 29
-                fprintf('本次测试周期时间小于29秒\n');
-            end
-            % disp('test 3 passed');
-            % pause(1.5)
-            % clc
-
-            tic
-            fprintf('本次执行结果为：风向: %.0f, 风速: %.1f, 青州12风场AGC: %.2f%%, 青州3风场AGC: %.2f%%\n', ...
-                    wind_direction(wd), vel_sets(vel), 100*qingzhou12_agc_perc(2), 100*qingzhou3_agc_perc(2));
-            swi.yaw_optimization_tracking_life_ipopt(qingzhou12_agc(2), qingzhou3_agc(2));
-            times((wd - 1) * length(vel_sets) + vel, 4) = toc;
-            objectives((wd - 1) * length(vel_sets) + vel, 4) = swi.get_farm_power();
-            fprintf('本次执行周期为: %.2fs\n', times((wd - 1) * length(vel_sets) + vel, 4));
-            if times((wd - 1) * length(vel_sets) + vel, 4) <= 29
-                fprintf('本次测试周期时间小于29秒\n');
-            end
-            % disp('test 4 passed');
-            % fprintf('Wind direction: %.1f, Wind speed: %.1f - Test passed.\n', wind_direction(wd), vel_sets(vel));
-            % pause(1.5)
-            % clc
-        catch
-            err_list((wd - 1) * length(vel_sets) + vel) = -1; % 记录错误
-            fprintf('Wind direction: %.1f, Wind speed: %.1f - Test failed.\n', wind_direction(wd), vel_sets(vel));
-        end
+wd = 1; vel = 1;
+swi = SmartWindInterface_yaw(sqz_12, turbine_diameter_vector, turbine_hub_height_vector, rated_power_vector,...
+    life_total_vector, repair_c_vector, matrix, wind_direction(wd), vel_sets(vel));
+swi.windfield.wake.velocity_model = 'Huadian';
+swi.windfield.wake.deflection_model = 'Huadian';
+swi.windfield.wake.turbulence_model = 'Huadian';
+swi.windfield.enable_wfr = 'No';
+try
+    swi.calculate_wake();
+    power_baseline = swi.get_farm_power();
+    qingzhou12_baseline = swi.get_farm_qingzhou12_power();
+    qingzhou3_baseline = swi.get_farm_qingzhou3_power();
+    qingzhou12_agc = qingzhou12_baseline .* qingzhou12_agc_perc; % 50%与100%基准功率
+    qingzhou3_agc = qingzhou3_baseline .* qingzhou3_agc_perc;
+    tic
+    % 打印输入：风向，风速，青州12与青州3的AGC功率百分比
+    fprintf('本次执行结果为：风向: %.0f, 风速: %.1f, 青州12风场AGC: %.2f%%, 青州3风场AGC: %.2f%%\n', ...
+        wind_direction(wd), vel_sets(vel), 100*qingzhou12_agc_perc(1), 100*qingzhou3_agc_perc(1));
+    swi.yaw_optimization_tracking_life_ipopt(qingzhou12_agc(1), qingzhou3_agc(1));
+    times((wd - 1) * length(vel_sets) + vel, 1) = toc;
+    objectives((wd - 1) * length(vel_sets) + vel, 1) = swi.get_farm_power();
+    % 打印运行时间
+    fprintf('本次执行周期为: %.2fs\n', times((wd - 1) * length(vel_sets) + vel, 1));
+    % 判定是否小于29s
+    if times((wd - 1) * length(vel_sets) + vel, 1) <= 29
+        fprintf('本次测试周期时间小于29秒\n');
     end
-end
+    % disp('test 1 passed');
+    % pause(1.5)
+    % clc
+
+    tic
+    fprintf('本次执行结果为：风向: %.0f, 风速: %.1f, 青州12风场AGC: %.2f%%, 青州3风场AGC: %.2f%%\n', ...
+        wind_direction(wd), vel_sets(vel), 100*qingzhou12_agc_perc(1), 100*qingzhou3_agc_perc(2));
+    swi.yaw_optimization_tracking_life_ipopt(qingzhou12_agc(1), qingzhou3_agc(2));
+    times((wd - 1) * length(vel_sets) + vel, 2) = toc;
+    objectives((wd - 1) * length(vel_sets) + vel, 2) = swi.get_farm_power();
+    fprintf('本次执行周期为: %.2fs\n', times((wd - 1) * length(vel_sets) + vel, 2));
+    if times((wd - 1) * length(vel_sets) + vel, 2) <= 29
+        fprintf('本次测试周期时间小于29秒\n');
+    end
+    % disp('test 2 passed');
+    % pause(1.5)
+    % clc
+
+    tic
+    fprintf('本次执行结果为：风向: %.0f, 风速: %.1f, 青州12风场AGC: %.2f%%, 青州3风场AGC: %.2f%%\n', ...
+        wind_direction(wd), vel_sets(vel), 100*qingzhou12_agc_perc(2), 100*qingzhou3_agc_perc(1));
+    swi.yaw_optimization_tracking_life_ipopt(qingzhou12_agc(2), qingzhou3_agc(1));
+    times((wd - 1) * length(vel_sets) + vel, 3) = toc;
+    objectives((wd - 1) * length(vel_sets) + vel, 3) = swi.get_farm_power();
+    fprintf('本次执行周期为: %.2fs\n', times((wd - 1) * length(vel_sets) + vel, 3));
+    if times((wd - 1) * length(vel_sets) + vel, 3) <= 29
+        fprintf('本次测试周期时间小于29秒\n');
+    end
+    % disp('test 3 passed');
+    % pause(1.5)
+    % clc
+
+    tic
+    fprintf('本次执行结果为：风向: %.0f, 风速: %.1f, 青州12风场AGC: %.2f%%, 青州3风场AGC: %.2f%%\n', ...
+        wind_direction(wd), vel_sets(vel), 100*qingzhou12_agc_perc(2), 100*qingzhou3_agc_perc(2));
+    swi.yaw_optimization_tracking_life_ipopt(qingzhou12_agc(2), qingzhou3_agc(2));
+    times((wd - 1) * length(vel_sets) + vel, 4) = toc;
+    objectives((wd - 1) * length(vel_sets) + vel, 4) = swi.get_farm_power();
+    fprintf('本次执行周期为: %.2fs\n', times((wd - 1) * length(vel_sets) + vel, 4));
+    if times((wd - 1) * length(vel_sets) + vel, 4) <= 29
+        fprintf('本次测试周期时间小于29秒\n');
+    end
+    % disp('test 4 passed');
+    % fprintf('Wind direction: %.1f, Wind speed: %.1f - Test passed.\n', wind_direction(wd), vel_sets(vel));
+    % pause(1.5)
+    % clc
+
+save('TestData/launch.mat')
