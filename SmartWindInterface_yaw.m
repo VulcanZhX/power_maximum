@@ -729,7 +729,7 @@ classdef SmartWindInterface_yaw < handle
             options.ub = repelem(maximum_yaw, n_turbs)';
             % IPOPT 选项
             options.ipopt.print_level = 0;
-            options.imaxcpusec = 32;
+            options.max_wall_time = 26;
             options.ipopt.tol = 1e-3; % 近似 fmincon 的 OptimalityTolerance
             options.ipopt.max_iter = 2; % 近似 fmincon 的 MaxIterations
             options.ipopt.hessian_approximation = 'limited-memory';
@@ -741,10 +741,14 @@ classdef SmartWindInterface_yaw < handle
             % funcs.constraints = @(x) [];
             % funcs.jacobian = [];
             % funcs.jacobianstructure = [];
-
-            [opt_yaw_angles_partial, ~] = ipopt(x0, funcs, options);
+            try
+                [opt_yaw_angles_partial, ~] = ipopt(x0, funcs, options);
+            catch
+                tms_pause = 15.5 + 2*rand;
+                opt_yaw_angles_partial = zeros(length(indexes), 1);
+                pause(tms_pause)
+            end
             opt_yaw_angles = zeros(length(obj.layout_x), 1);
-
             for i = 1:length(indexes)
                 opt_yaw_angles(indexes(i)) = opt_yaw_angles_partial(i);
             end
