@@ -1,4 +1,37 @@
 classdef SmartWindInterface_yaw < handle
+    %% SmartWindInterface_yaw Class
+    %
+    % 作者: [Your Name]
+    % 版本号: 1.0
+    %
+    % 简介:
+    % 该类用于风场的优化和模拟，主要通过调整风机的偏航角来最大化风场的发电效率。
+    %
+    % 输入参数:
+    %    - sqz_12: 风场参数，用于构造体内的风机参数。
+    %    - turbine_diameter_vector: 各个风机的直径向量。
+    %    - turbine_hub_height_vector: 各个风机的轮毂高度向量。
+    %    - rated_power_vector: 各个风机的额定功率。
+    %    - life_total_vector: 各个风机的寿命总向量。
+    %    - repair_c_vector: 各个风机的维修成本向量。
+    %    - yaw_matrix: 各个风机的初始偏航角度矩阵。
+    %    - winddirection: 风向的数据。
+    %    - windvelocity: 风速的数据。
+    %
+    % 功能:
+    % 1. 初始化风场的布局，包括风机的位置和状态。
+    % 2. 支持用户自定义风场布局。
+    % 3. 提供计算风机尾流影响的方法，包括无尾流条件下的模拟。
+    % 4. 提供模拟风场下，可视化风场功率分布的功能。
+    % 5. 能够优化风机偏航角以最大化风场功率，支持几种优化算法如基于梯度的方法和遗传算法等。
+    % 6. 计算年平均发电量（AEP），考虑或不考虑尾流影响，并支持基于风速和风向频率的数据加载选项。
+    % 7. 提供排除故障涡轮机并恢复风场初始状态的功能。
+    % 8. 对风速和风向的分布进行可视化，以帮助用户评估风场性能。
+    %
+    % 使用注意事项:
+    % 1. 初始化时需要确保 'inputs_all_fields.xlsx' 文件的存在并路径正确。
+    % 2. 调用带有风速和风向频率数据的功能之前，须先加载对应的数据。
+    % 3. 在进行任何个别风机角度设置前，应确保风场布局已经正确设置。
 
     properties
         layout_x
@@ -192,20 +225,6 @@ classdef SmartWindInterface_yaw < handle
             end
 
         end
-
-        % % %% 存储所有涡轮机的轴向诱导因子
-        % % function aif_vector=get_aif_angles(obj)
-        % %     aif_vector=zeros(1,length(obj.layout_x));
-        % %     for i=1:length(aif_vector)
-        % %         aif_vector(i)=obj.windfield.turbinechart.turbines...
-        % %             {i,1}.axial_induction_factor;
-        % %     end
-        % % end
-
-        %GET_TILT_ANGLES is a function that has the same goal of the
-        %'get_yaw_angles()' function. However, no tilt angle steering is
-        %employed at the moment in this program, but this could be an
-        %interesting option for the future of wind turbines.
 
         %% 存储所有风机的倾斜角度
         function tilt_vector = get_tilt_angles(obj)
@@ -1218,30 +1237,6 @@ classdef SmartWindInterface_yaw < handle
 
         end
 
-        % function H = approx_hessian_fd(gradfun, x, epsilon)
-        %     % 近似计算 Hessian 矩阵
-        %     % gradfun: 计算梯度的函数句柄，输入 x，输出梯度向量
-        %     % x: 计算点（列向量）
-        %     % epsilon: 差分步长，默认 1e-6
-        %
-        %     if nargin < 3
-        %         epsilon = 1e-3;
-        %     end
-        %
-        %     n = length(x);
-        %     g0 = gradfun(x);
-        %     H = zeros(n, n);
-        %
-        %     parfor i = 1:n
-        %         x_eps = x;
-        %         x_eps(i) = x_eps(i) + epsilon;
-        %         g1 = gradfun(x_eps);
-        %         H(:, i) = (g1 - g0) / epsilon;
-        %     end
-        %
-        %     % 保证 Hessian 对称
-        %     H = (H + H') / 2;
-        % end
 
         function rel_power = cost_track_function(obj, yaw_angles, aff_turbines, qingzhou12_agc, qingzhou3_agc)
             vector = zeros(numel(obj.layout_x), 1);
