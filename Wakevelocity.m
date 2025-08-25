@@ -99,24 +99,6 @@ classdef Wakevelocity < handle
             sigma_0=0.235*rotor_D;
             d_w = 1 + 0.0834 * log(1 + exp((x_d - rotor_D) ./ rotor_D * 2));
             delta_U = (1 - sqrt(1 - turbine.Ct * cosd(turbine.yaw_angle)^2)) ./ (2 * d_w.^2) .* (1 + erf(sqrt(2) * x_d./ rotor_D));
-
-
-            % y_c=zeros(size(x_d));
-            % for i = 1:length(x_d)
-            %     dx_val = x_d(i);
-            %     if dx_val > 0
-            %         delta_x_steps = 0:10:(dx_val - 1);  % 步长为10
-            %         if ~isempty(delta_x_steps)
-            %             d_w_steps = 1 + 0.0834 * log(1 + exp((delta_x_steps - rotor_D) / rotor_D * 2));
-            %             integrand = -turbine.Ct * cos(turbine.yaw_angle)^2 * sin(turbine.yaw_angle) ./ (8 * d_w_steps.^2) ...
-            %                         .* (1 + erf(sqrt(2) * delta_x_steps / rotor_D));
-            %             y_c(i) = sum(integrand) * 20;  % 矩形法积分，步长10 * 2 = 20
-            %         end
-            %     else
-            %         y_c(i) = 0;
-            %     end
-            % end
-            % tic
             percent_deficit = delta_U .* rotor_D^2 ./ (8 * sigma_0^2) .* exp(-((y_d - deflection).^2 + z_d.^2) ./ (2 * sigma_0^2 .* d_w.^2));
             % percent_deficit
             deficit=percent_deficit.*u_initial;
